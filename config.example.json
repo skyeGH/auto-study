@@ -1,0 +1,17 @@
+{
+  "cookie": "your_cookie_here（从浏览器 F12 → Network → cv.gson 请求头中复制）",
+  "myClassId": "your_class_id（从 cv.gson 请求参数中获取）",
+  "myClassCourseId": "your_course_id（从 cv.gson 请求参数中获取）",
+  "videos": [
+    {
+      "myClassCourseVideoId": "video_id（每个视频不同）",
+      "vid": "视频vid",
+      "pid": "BAIJIAYUN_xxx",
+      "duration": 6400,
+      "name": "视频1"
+    }
+  ],
+  "delay": 5000,
+  "segmentSize": 1000,
+  "targetProgress": 100
+}

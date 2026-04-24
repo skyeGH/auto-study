@@ -1,0 +1,9 @@
+# 配置文件（含敏感信息，不上传）
+config.json
+
+# PDF文件
+*.pdf
+
+# 系统文件
+.DS_Store
+Thumbs.db

@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fetch 请求解析工具</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: #0f1117;
+      color: #e2e8f0;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #7dd3fc;
+      margin-bottom: 6px;
+      letter-spacing: 0.5px;
+    }
+
+    .subtitle {
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 20px;
+    }
+
+    .input-area {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 16px;
+    }
+
+    .input-area label {
+      display: block;
+      font-size: 0.8rem;
+      color: #94a3b8;
+      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    textarea {
+      width: 100%;
+      height: 180px;
+      background: #0f1117;
+      border: 1px solid #2d3348;
+      border-radius: 6px;
+      color: #e2e8f0;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      font-size: 0.82rem;
+      padding: 12px;
+      resize: vertical;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+
+    textarea:focus { border-color: #7dd3fc; }
+    textarea::placeholder { color: #334155; }
+
+    .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 10px 22px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: all 0.15s;
+    }
+
+    .btn-parse {
+      background: #3b82f6;
+      color: #fff;
+    }
+    .btn-parse:hover { background: #2563eb; }
+
+    .btn-clear {
+      background: #1e2130;
+      color: #94a3b8;
+      border: 1px solid #2d3348;
+    }
+    .btn-clear:hover { background: #2d3348; }
+
+    .results { display: flex; flex-direction: column; gap: 16px; }
+
+    .card {
+      background: #1e2130;
+      border: 1px solid #2d3348;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      background: #161825;
+      border-bottom: 1px solid #2d3348;
+    }
+
+    .card-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .badge {
+      font-size: 0.72rem;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-weight: 600;
+    }
+
+    .badge-blue  { background: #1e3a5f; color: #7dd3fc; }
+    .badge-green { background: #14352a; color: #6ee7b7; }
+    .badge-purple{ background: #2e1b4e; color: #c4b5fd; }
+
+    .card-body { padding: 14px 16px; }
+
+    /* Cookie 表格 */
+    .cookie-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+
+    .cookie-table th {
+      text-align: left;
+      padding: 6px 10px;
+      color: #64748b;
+      border-bottom: 1px solid #2d3348;
+      font-weight: 600;
+    }
+
+    .cookie-table td {
+      padding: 7px 10px;
+      border-bottom: 1px solid #1a1f33;
+      vertical-align: top;
+      word-break: break-all;
+    }
+
+    .cookie-table tr:last-child td { border-bottom: none; }
+
+    .cookie-table td:first-child {
+      color: #7dd3fc;
+      white-space: nowrap;
+      width: 200px;
+      font-family: monospace;
+    }
+
+    .cookie-table td:last-child {
+      color: #e2e8f0;
+      font-family: monospace;
+    }
+
+    .copy-btn {
+      padding: 3px 10px;
+      font-size: 0.73rem;
+      font-weight: 500;
+      border-radius: 4px;
+      background: #1e3a5f;
+      color: #7dd3fc;
+      border: 1px solid #2563eb44;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .copy-btn:hover { background: #2563eb55; }
+
+    /* JSON viewer */
+    pre.json-block {
+      background: #0f1117;
+      border: 1px solid #2d3348;
+      border-radius: 6px;
+      padding: 14px;
+      font-size: 0.82rem;
+      font-family: 'Consolas', 'Fira Code', monospace;
+      overflow-x: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      line-height: 1.6;
+      max-height: 420px;
+      overflow-y: auto;
+    }
+
+    /* JSON syntax highlight */
+    .json-key    { color: #7dd3fc; }
+    .json-string { color: #6ee7b7; }
+    .json-number { color: #fbbf24; }
+    .json-bool   { color: #c4b5fd; }
+    .json-null   { color: #f87171; }
+
+    /* URL / method info */
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      font-size: 0.83rem;
+    }
+
+    .method-tag {
+      padding: 3px 10px;
+      border-radius: 4px;
+      font-weight: 700;
+      font-size: 0.78rem;
+    }
+    .method-GET    { background: #14352a; color: #6ee7b7; }
+    .method-POST   { background: #1e3a5f; color: #7dd3fc; }
+    .method-PUT    { background: #2e1b4e; color: #c4b5fd; }
+    .method-DELETE { background: #3b1c1c; color: #f87171; }
+    .method-PATCH  { background: #352d14; color: #fcd34d; }
+
+    .url-text {
+      font-family: monospace;
+      color: #94a3b8;
+      word-break: break-all;
+    }
+
+    .empty-hint {
+      color: #334155;
+      font-size: 0.85rem;
+      text-align: center;
+      padding: 40px 0;
+    }
+
+    .error-msg {
+      background: #3b1c1c;
+      border: 1px solid #f8717144;
+      color: #f87171;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+    }
+
+    /* Headers section */
+    .headers-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.82rem;
+    }
+    .headers-table th {
+      text-align: left;
+      padding: 6px 10px;
+      color: #64748b;
+      border-bottom: 1px solid #2d3348;
+      font-weight: 600;
+    }
+    .headers-table td {
+      padding: 6px 10px;
+      border-bottom: 1px solid #1a1f33;
+      word-break: break-all;
+    }
+    .headers-table tr:last-child td { border-bottom: none; }
+    .headers-table td:first-child {
+      color: #fcd34d;
+      white-space: nowrap;
+      width: 200px;
+      font-family: monospace;
+    }
+    .headers-table td:last-child {
+      color: #cbd5e1;
+      font-family: monospace;
+    }
+
+    .section-tabs {
+      display: flex;
+      gap: 2px;
+      margin-bottom: 12px;
+    }
+    .tab {
+      padding: 5px 14px;
+      border-radius: 5px;
+      font-size: 0.8rem;
+      cursor: pointer;
+      color: #64748b;
+      background: transparent;
+      border: 1px solid transparent;
+      transition: all 0.15s;
+    }
+    .tab.active {
+      background: #1e3a5f;
+      color: #7dd3fc;
+      border-color: #2563eb44;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #1e2130; }
+    ::-webkit-scrollbar-thumb { background: #2d3348; border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+<h1>🔍 Fetch 请求解析工具</h1>
+<p class="subtitle">粘贴 "Copy as fetch" 的内容，自动解析 Cookie、Payload、Headers</p>
+
+<div class="input-area">
+  <label>粘贴 fetch 代码</label>
+  <textarea id="fetchInput" placeholder='fetch("https://example.com/api", {
+  "headers": {
+    "cookie": "sessionid=abc123; token=xyz...",
+    "content-type": "application/json"
+  },
+  "body": "{\"key\":\"value\"}",
+  "method": "POST"
+})'></textarea>
+</div>
+
+<div class="btn-row">
+  <button class="btn-parse" onclick="parseFetch()">▶ 解析</button>
+  <button class="btn-clear" onclick="clearAll()">✕ 清空</button>
+</div>
+
+<div class="results" id="results">
+  <div class="empty-hint">粘贴 fetch 代码后点击「解析」</div>
+</div>
+
+<script>
+// ── 工具函数 ──────────────────────────────────────────────────────────────────
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
+function syntaxHighlight(json) {
+  const str = typeof json === 'string' ? json : JSON.stringify(json, null, 2);
+  return str.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    match => {
+      if (/^"/.test(match)) {
+        if (/:$/.test(match)) return `<span class="json-key">${escapeHtml(match)}</span>`;
+        return `<span class="json-string">${escapeHtml(match)}</span>`;
+      }
+      if (/true|false/.test(match)) return `<span class="json-bool">${match}</span>`;
+      if (/null/.test(match))       return `<span class="json-null">${match}</span>`;
+      return `<span class="json-number">${match}</span>`;
+    }
+  );
+}
+
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '✓ 已复制';
+    setTimeout(() => btn.textContent = orig, 1500);
+  });
+}
+
+// ── 核心解析 ──────────────────────────────────────────────────────────────────
+
+function parseFetch() {
+  const raw = document.getElementById('fetchInput').value.trim();
+  const resultsEl = document.getElementById('results');
+
+  if (!raw) {
+    resultsEl.innerHTML = '<div class="error-msg">请先粘贴 fetch 代码</div>';
+    return;
+  }
+
+  try {
+    // 提取 URL
+    const urlMatch = raw.match(/fetch\s*\(\s*["'`]([^"'`]+)["'`]/);
+    const url = urlMatch ? urlMatch[1] : '（未找到 URL）';
+
+    // 提取 options 对象 —— 用括号计数精确提取，避免 cookie 里的特殊字符干扰
+    let method = 'GET', headers = {}, body = null;
+
+    const fetchOpen = raw.indexOf('fetch(');
+    const firstBrace = raw.indexOf('{', fetchOpen);
+    let depth = 0, inString = false, stringChar = '', optionsEnd = -1;
+    for (let i = firstBrace; i < raw.length; i++) {
+      const ch = raw[i];
+      if (inString) {
+        if (ch === '\\') { i++; continue; }
+        if (ch === stringChar) inString = false;
+        continue;
+      }
+      if (ch === '"' || ch === "'" || ch === '`') { inString = true; stringChar = ch; continue; }
+      if (ch === '{') depth++;
+      if (ch === '}') { depth--; if (depth === 0) { optionsEnd = i; break; } }
+    }
+    const optionsStr = optionsEnd > 0 ? raw.substring(firstBrace, optionsEnd + 1) : null;
+
+    if (optionsStr) {
+      // 直接从原始文本提取 method 和 body，避免 new Function 被特殊字符坑
+      const methodMatch = optionsStr.match(/"method"\s*:\s*"([^"]+)"/i);
+      if (methodMatch) method = methodMatch[1].toUpperCase();
+
+      // 提取 body（整个字符串值，含嵌套转义）
+      const bodyMatch = optionsStr.match(/"body"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+      if (bodyMatch) {
+        // 还原 JS 字符串转义
+        const rawBodyValue = bodyMatch[1]
+          .replace(/\\n/g, '\n').replace(/\\t/g, '\t').replace(/\\r/g, '\r')
+          .replace(/\\'/g, "'").replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+        body = rawBodyValue;
+      }
+
+      // 提取 headers — 用括号计数定位 "headers": { ... }
+      const headersStart = optionsStr.indexOf('"headers"');
+      if (headersStart > -1) {
+        const hBraceOpen = optionsStr.indexOf('{', headersStart);
+        let hDepth = 0, hInStr = false, hStrChar = '', hEnd = -1;
+        for (let i = hBraceOpen; i < optionsStr.length; i++) {
+          const ch = optionsStr[i];
+          if (hInStr) {
+            if (ch === '\\') { i++; continue; }
+            if (ch === hStrChar) hInStr = false;
+            continue;
+          }
+          if (ch === '"' || ch === "'" || ch === '`') { hInStr = true; hStrChar = ch; continue; }
+          if (ch === '{') hDepth++;
+          if (ch === '}') { hDepth--; if (hDepth === 0) { hEnd = i; break; } }
+        }
+        const headersStr = hEnd > 0 ? optionsStr.substring(hBraceOpen, hEnd + 1) : null;
+        if (headersStr) {
+          try { headers = (new Function(`return (${headersStr})`))(); }
+          catch (_) {
+            // cookie 含 ^ 等特殊字符导致 Function 失败，用正则暴力提取
+            const pairs = headersStr.match(/"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/g);
+            if (pairs) {
+              pairs.forEach(p => {
+                const m = p.match(/"([^"]+)"\s*:\s*"((?:[^"\\]|\\.)*)"/);
+                if (m) headers[m[1]] = m[2].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // ── 渲染 ──────────────────────────────────────────────────────────────
+    let html = '';
+
+    // 1. 基本信息
+    const methodClass = `method-${method}`;
+    html += `
+      <div class="card">
+        <div class="card-header">
+          <span class="card-title" style="color:#94a3b8">请求信息</span>
+        </div>
+        <div class="card-body">
+          <div class="info-row">
+            <span class="method-tag ${methodClass}">${escapeHtml(method)}</span>
+            <span class="url-text">${escapeHtml(url)}</span>
+          </div>
+        </div>
+      </div>`;
+
+    // 2. Cookie 解析
+    const cookieRaw = headers['cookie'] || headers['Cookie'] || '';
+    if (cookieRaw) {
+      html += `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="color:#6ee7b7">Cookie</span>
+          </div>
+          <div class="card-body">
+            <pre class="json-block" style="max-height:120px;margin-bottom:10px">${escapeHtml(cookieRaw)}</pre>
+            <div>
+              <button class="copy-btn" style="padding:5px 14px" onclick='copyText(${JSON.stringify(cookieRaw)},this)'>复制 Cookie</button>
+            </div>
+          </div>
+        </div>`;
+    } else {
+      html += `<div class="card">
+        <div class="card-header"><span class="card-title" style="color:#6ee7b7">Cookie</span></div>
+        <div class="card-body"><p style="color:#475569;font-size:0.85rem">未发现 Cookie</p></div>
+      </div>`;
+    }
+
+    // 3. Payload / Body — 解析 form-urlencoded 字符串，提取指定关键字段
+    const rawBodyStr = typeof body === 'string' ? body : '';
+    const formMap = {};
+    let watchInfoObj = null;
+
+    if (rawBodyStr) {
+      // 按 & 拆分 form 字段
+      const formPairs = rawBodyStr.split('&').map(pair => {
+        const eq = pair.indexOf('=');
+        if (eq === -1) return { key: pair, value: '' };
+        return { key: decodeURIComponent(pair.slice(0, eq)), value: decodeURIComponent(pair.slice(eq + 1)) };
+      });
+      formPairs.forEach(p => formMap[p.key] = p.value);
+
+      // 尝试把 watchInfo 的值当 JSON 解析
+      if (formMap.watchInfo) {
+        try { watchInfoObj = JSON.parse(formMap.watchInfo); } catch (_) {}
+      }
+
+      // 目标字段
+      const rows = [];
+      const add = (label, val) => {
+        if (val !== undefined && val !== null && val !== '')
+          rows.push({ label, value: String(val) });
+      };
+      add('myClassId', formMap.myClassId);
+      add('myClassCourseId', formMap.myClassCourseId);
+      add('myClassCourseVideoId', formMap.myClassCourseVideoId);
+      add('vid (watchInfo)', watchInfoObj?.vid);
+      add('pid (watchInfo)', watchInfoObj?.pid);
+
+      if (rows.length > 0) {
+        html += `
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title" style="color:#c4b5fd">Payload 关键字段</span>
+              <span class="badge badge-purple">${rows.length} 个</span>
+            </div>
+            <div class="card-body">
+              <table class="cookie-table">
+                <thead><tr><th>Key</th><th>Value</th></tr></thead>
+                <tbody>
+                  ${rows.map(r => `
+                    <tr>
+                      <td style="color:#c4b5fd">${escapeHtml(r.label)}</td>
+                      <td>
+                        <code>${escapeHtml(r.value)}</code>
+                        <button class="copy-btn" onclick='copyText(${JSON.stringify(r.value)},this)'>复制</button>
+                      </td>
+                    </tr>`).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+      } else {
+        html += `<div class="card">
+          <div class="card-header"><span class="card-title" style="color:#c4b5fd">Payload 关键字段</span></div>
+          <div class="card-body">
+            <p style="color:#475569;font-size:0.85rem">未找到目标字段</p>
+            <pre class="json-block" style="max-height:120px;margin-top:8px">${escapeHtml(rawBodyStr)}</pre>
+          </div>
+        </div>`;
+      }
+    } else {
+      html += `<div class="card">
+        <div class="card-header"><span class="card-title" style="color:#c4b5fd">Payload / Body</span></div>
+        <div class="card-body"><p style="color:#475569;font-size:0.85rem">无请求体（GET 请求或空 body）</p></div>
+      </div>`;
+    }
+
+    // 4. 生成 config.json
+    if (cookieRaw && formMap.myClassId) {
+      const configObj = {
+        cookie: cookieRaw,
+        myClassId: formMap.myClassId || '',
+        myClassCourseId: formMap.myClassCourseId || '',
+        videos: [{
+          myClassCourseVideoId: formMap.myClassCourseVideoId || '',
+          vid: watchInfoObj?.vid || '',
+          pid: watchInfoObj?.pid || '',
+          duration: 6400,
+          name: '视频1'
+        }],
+        delay: 5000,
+        segmentSize: 1000,
+        targetProgress: 100
+      };
+      const configStr = JSON.stringify(configObj, null, 2);
+
+      html += `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="color:#f472b6">生成 config.json</span>
+            <span class="badge" style="background:#2e1b3e;color:#f472b6">可复制</span>
+          </div>
+          <div class="card-body">
+            <pre class="json-block">${escapeHtml(configStr)}</pre>
+            <div style="margin-top:10px">
+              <button class="copy-btn" style="padding:5px 14px" onclick='copyText(${JSON.stringify(configStr)},this)'>复制 config.json</button>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    // 5. 全部 Headers
+    const headerKeys = Object.keys(headers).filter(k => k.toLowerCase() !== 'cookie');
+    if (headerKeys.length > 0) {
+      html += `
+        <div class="card">
+          <div class="card-header">
+            <span class="card-title" style="color:#fcd34d">其他 Headers</span>
+            <span class="badge badge-blue">${headerKeys.length} 条</span>
+          </div>
+          <div class="card-body">
+            <table class="headers-table">
+              <thead><tr><th>Key</th><th>Value</th></tr></thead>
+              <tbody>
+                ${headerKeys.map(k => `
+                  <tr>
+                    <td>${escapeHtml(k)}</td>
+                    <td>${escapeHtml(String(headers[k]))}</td>
+                  </tr>`).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>`;
+    }
+
+    resultsEl.innerHTML = html;
+
+  } catch (err) {
+    document.getElementById('results').innerHTML = `
+      <div class="error-msg">
+        ⚠ 解析失败：${escapeHtml(err.message)}<br>
+        <small style="opacity:0.7">请确认粘贴的是完整的 fetch(...) 代码</small>
+      </div>`;
+  }
+}
+
+function clearAll() {
+  document.getElementById('fetchInput').value = '';
+  document.getElementById('results').innerHTML = '<div class="empty-hint">粘贴 fetch 代码后点击「解析」</div>';
+}
+
+// 支持 Ctrl+Enter 快捷解析
+document.getElementById('fetchInput').addEventListener('keydown', e => {
+  if (e.ctrlKey && e.key === 'Enter') parseFetch();
+});
+</script>
+</body>
+</html>
