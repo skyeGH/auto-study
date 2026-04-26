@@ -579,13 +579,15 @@ function parseFetch() {
         <div class="card">
           <div class="card-header">
             <span class="card-title" style="color:#f472b6">生成 config.json</span>
-            <span class="badge" style="background:#2e1b3e;color:#f472b6">可复制</span>
+            <span class="badge" style="background:#2e1b3e;color:#f472b6">可复制 / 可保存</span>
           </div>
           <div class="card-body">
             <pre class="json-block">${escapeHtml(configStr)}</pre>
-            <div style="margin-top:10px">
+            <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
               <button class="copy-btn" style="padding:5px 14px" onclick='copyText(${JSON.stringify(configStr)},this)'>复制 config.json</button>
+              <button class="copy-btn" style="padding:5px 14px;background:#14352a;color:#6ee7b7;border-color:#10b98144" onclick='saveConfigFile(${JSON.stringify(configStr)},this)'>💾 保存为 config.json</button>
             </div>
+            <p style="color:#475569;font-size:0.76rem;margin-top:8px">点击「保存」后选择刷课工具目录下的 config.json，直接覆盖即可</p>
           </div>
         </div>`;
     }
@@ -628,6 +630,45 @@ function parseFetch() {
 function clearAll() {
   document.getElementById('fetchInput').value = '';
   document.getElementById('results').innerHTML = '<div class="empty-hint">粘贴 fetch 代码后点击「解析」</div>';
+}
+
+// 保存 config.json —— 优先用 showSaveFilePicker（可直接覆盖原文件），降级为普通下载
+async function saveConfigFile(configStr, btn) {
+  const blob = new Blob([configStr], { type: 'application/json' });
+
+  // 现代浏览器：弹出文件保存对话框，默认文件名 config.json
+  if (window.showSaveFilePicker) {
+    try {
+      const handle = await window.showSaveFilePicker({
+        suggestedName: 'config.json',
+        types: [{ description: 'JSON 配置文件', accept: { 'application/json': ['.json'] } }]
+      });
+      const writable = await handle.createWritable();
+      await writable.write(blob);
+      await writable.close();
+      const orig = btn.textContent;
+      btn.textContent = '✓ 已保存';
+      setTimeout(() => btn.textContent = orig, 2000);
+    } catch (e) {
+      if (e.name !== 'AbortError') {
+        alert('保存失败：' + e.message);
+      }
+    }
+    return;
+  }
+
+  // 降级：普通 <a> 下载（文件会进 Downloads 文件夹，手动覆盖）
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'config.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  const orig = btn.textContent;
+  btn.textContent = '✓ 已下载';
+  setTimeout(() => btn.textContent = orig, 2000);
 }
 
 // 支持 Ctrl+Enter 快捷解析
